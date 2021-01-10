@@ -1,0 +1,20 @@
+{
+  "name": "cc-stream",
+  "version": "1.0.0",
+  "description": "Custom live crypto ticker development for coinrated.",
+  "main": "index.js",
+  "scripts": {
+    "server": "php -S localhost:8000"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rainner/cc-stream.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rainner/cc-stream/issues"
+  },
+  "homepage": "https://github.com/rainner/cc-stream#readme"
+}

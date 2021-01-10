@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <title>Coin Info</title>
+
+    <meta charset="UTF-8" />
+    <meta http-equiv="x-ua-compatible" content="IE=Edge, chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="description" id="description" content="My awesome web app." />
+
+    <link href="//fonts.googleapis.com/css?family=Boogaloo" rel="stylesheet" />
+    <link href="//cdnjs.cloudflare.com/ajax/libs/Swiper/4.0.7/css/swiper.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="public/css/app.css" />
+
+  </head>
+  <body>
+
+    <!-- main wrappers -->
+    <div id="app">
+      <div id="wrapper">
+
+        <!-- page section -->
+        <section class="card push-bottom">
+
+          <div class="flex-row flex-middle flex-space">
+
+            <div class="flex-row flex-middle push-right">
+              <img class="push-right" :src="coin.image" :alt="coin.name" />
+              <div>
+                <h2>{{ coin.name }}</h2>
+                <span class="text-grey">{{ coin.symbol }}</span>
+              </div>
+            </div>
+
+            <div class="push-right color">
+              <h2><fancynumber class="text-nowrap" :number="coin.price" :decimals="coin.price_decimals" :prefix="coin.price_prefix + ' '"></fancynumber></h2>
+              <fancynumber class="text-nowrap" :number="coin.percent_change_24h" :type="'percent'" :decimals="2" :class="coin.percent_change_24h_style"></fancynumber>
+              <span class="text-grey">&nbsp; 24h</span>
+            </div>
+
+            <div class="text-right">
+              <div>
+                <span class="text-grey">M.Cap &nbsp;</span>
+                <fancynumber class="text-nowrap" :number="coin.market_cap" :type="'money'"></fancynumber>
+              </div>
+              <div>
+                <span class="text-grey">Supply &nbsp;</span>
+                <fancynumber class="text-nowrap" :number="coin.circulating_supply" :type="'money'"></fancynumber>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="coin-chart-wrap" :class="{ 'busy': chartBusy }">
+            <div class="coin-chart" ref="chartPrice"></div>
+            <div class="coin-chart" ref="chartVolume"></div>
+          </div>
+
+          <div class="coin-chart-btns text-center">
+            <button class="text-btn" :class="{ 'active': chartTime === 86400 }" @click="fetchCharts( 86400, '5m' )">24 Hours</button>
+            <button class="text-btn" :class="{ 'active': chartTime === 604800 }" @click="fetchCharts( 604800, '15m' )">7 Days</button>
+            <button class="text-btn" :class="{ 'active': chartTime === 2592000 }" @click="fetchCharts( 2592000, '1h' )">30 days</button>
+            <button class="text-btn" :class="{ 'active': chartTime === 31536000 }" @click="fetchCharts( 31536000, '12h' )">1 Year</button>
+            <button class="text-btn" :class="{ 'active': chartTime === 157680000 }" @click="fetchCharts( 157680000, '7d' )">5 Years</button>
+          </div>
+
+        </section>
+
+        <!-- page section -->
+        <section class="card push-bottom">
+          <h1>Upcoming Events for {{ coin.name }}</h1>
+          <hr />
+
+          <div v-if="!eventsData.length" class="text-loader">
+            Waiting for events data...
+          </div>
+
+          <swiper class="swiper-wrap" :options="eventsOptions">
+            <div class="swiper-pagination" slot="pagination"></div>
+            <swiper-slide v-for="e of eventsData" class="push-bottom" :key="e.id" :class="{ 'faded': e.done }">
+              <div class="push-bottom">
+                <small class="text-grey" :class="{ 'text-striked': e.done }">{{ e.datestr }}</small>
+              </div>
+              <div class="push-bottom">
+                <h3>{{ e.name }}</h3>
+              </div>
+              <div class="push-bottom">
+                <span class="text-grey">{{ e.description }}</span>
+              </div>
+              <div>
+                <a class="text-btn" :href="e.link" target="_blank">Source</a>
+              </div>
+            </swiper-slide>
+          </swiper>
+
+        </section>
+
+        <!-- page section -->
+        <section class="card push-bottom">
+
+          <div class="flex-row flex-middle flex-stretch">
+
+            <div class="flex-1 push-right">
+              <h1>Historical Prices for {{ coin.name }}</h1>
+            </div>
+
+            <div class="form-input flex-row flex-middle push-right">
+              <div class="flex-row flex-middle push-right">
+                <input class="push-right" type="range" min="10" max="100" step="10" style="width: 80px" v-model="historyLimit" />
+                <span>{{ historyLimit }}</span>
+              </div>
+              <div>
+                <select v-model="historyInterval">
+                  <option value="1h">Hours</option>
+                  <option value="1d" selected>Days</option>
+                  <option value="7d">Weeks</option>
+                  <option value="30d">Months</option>
+                  <option value="365d">Years</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <button class="text-btn" @click="fetchHistory()">Update</button>
+            </div>
+
+          </div>
+
+          <hr />
+
+          <div class="common-list push-bottom">
+
+            <div class="common-item flex-row flex-middle flex-stretch text-grey">
+              <div class="flex-1">Date</div>
+              <div class="flex-1 text-right">Price</div>
+              <div class="flex-1 text-right">Volume</div>
+              <div class="flex-1 text-right">Market Cap</div>
+            </div>
+
+            <div v-if="!historyList.length" class="text-loader">
+              Waiting for history data...
+            </div>
+
+            <div v-for="e of historyList" class="common-item flex-row flex-middle flex-stretch" :key="e.timestamp">
+              <div class="flex-1">
+                <span>{{ e.date }}</span>
+              </div>
+              <div class="flex-1 text-right">
+                <fancynumber class="text-nowrap" :number="e.price" :decimals="3" :prefix="'$ '"></fancynumber>
+              </div>
+              <div class="flex-1 text-right">
+                <fancynumber class="text-nowrap" :number="e.volume_24h" :type="'money'"></fancynumber>
+              </div>
+              <div class="flex-1 text-right">
+                <fancynumber class="text-nowrap" :number="e.market_cap" :type="'money'"></fancynumber>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- pagination buttons -->
+          <div class="pagination">
+            <button v-for="page in historyPages" class="push-right" :class="{ 'active': ( page === historyPage ) }" :key="page" @click="setPage( 'historyPage', page )">
+              <span>{{ page }}</span>
+            </button>
+          </div>
+
+        </section>
+
+        <!-- page section -->
+        <section class="card push-bottom">
+
+          <div class="flex-row flex-middle flex-stretch">
+            <div class="flex-1 push-right">
+              <h1>{{ coin.name }} Exchanges</h1>
+            </div>
+            <div class="form-input">
+              <input type="text" placeholder="Search..." v-model="exchangesSearch" />
+            </div>
+          </div>
+
+          <hr />
+
+          <div class="common-list push-bottom">
+
+            <div class="common-item flex-row flex-middle flex-stretch text-grey">
+              <div class="flex-1">Exchange</div>
+              <div class="flex-1 text-right">Volume</div>
+              <div class="flex-1 text-right">Share</div>
+            </div>
+
+            <div v-if="!exchangesList.length" class="text-loader">
+              Waiting for exchanges data...
+            </div>
+
+            <div v-for="e of exchangesList" class="common-item flex-row flex-middle flex-stretch" :key="e.id">
+              <div class="flex-1">
+                <span>{{ e.name }}</span>
+              </div>
+              <div class="flex-1 text-right">
+                <fancynumber class="text-nowrap" :number="e.total_volume" :type="'money'"></fancynumber>
+              </div>
+              <div class="flex-1 text-right">
+                <fancynumber class="text-nowrap" :number="e.adjusted_volume_24h_share" :type="'percent'" :decimals="8"></fancynumber>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- pagination buttons -->
+          <div class="pagination">
+            <button v-for="page in exchangesPages" class="push-right" :class="{ 'active': ( page === exchangesPage ) }" :key="page" @click="setPage( 'exchangesPage', page )">
+              <span>{{ page }}</span>
+            </button>
+          </div>
+
+        </section>
+
+        <!-- page section -->
+        <section class="card push-bottom">
+
+          <div class="flex-row flex-middle flex-stretch">
+            <div class="flex-1 push-right">
+              <h1>{{ coin.name }} Markets</h1>
+            </div>
+            <div class="form-input">
+              <input type="text" placeholder="Search: USD GBP CNY" v-model="marketsSearch" />
+            </div>
+          </div>
+
+          <hr />
+
+          <div class="markets-list push-bottom">
+
+            <div class="markets-list-header flex-row flex-middle flex-stretch text-grey">
+              <div class="flex-1">Market</div>
+              <div class="flex-1 text-right">Exchanges</div>
+              <div class="flex-1 text-right">Volume</div>
+              <div class="flex-1 text-right">Price</div>
+              <div class="flex-1 text-right">Share</div>
+            </div>
+
+            <div v-if="!marketsList.length" class="text-loader">
+              Waiting for markets data...
+            </div>
+
+            <div v-for="e of marketsList" class="markets-list-group" :class="{ 'active': e.active }" :key="e.pair">
+
+              <div class="markets-list-item flex-row flex-middle flex-stretch">
+                <div class="flex-1">
+                  <span v-if="e.active === true">▲</span>
+                  <span v-if="e.active === false">▼</span>
+                  <span class="clickable" @click="toggleMarketsGroup( e.pair )">{{ e.pair }}</span>
+                </div>
+                <div class="flex-1 push-left text-right">
+                  <fancynumber class="text-nowrap" :number="e.total_exchanges" :type="'money'"></fancynumber>
+                </div>
+                <div class="flex-1 push-left text-right">
+                  <fancynumber class="text-nowrap" :number="e.total_volume" :type="'money'"></fancynumber>
+                </div>
+                <div class="flex-1 push-left text-right">
+                  <fancynumber class="text-nowrap" :number="e.average_price" :decimals="3" :prefix="'$ '"></fancynumber>
+                </div>
+                <div class="flex-1 push-left text-right">
+                  <fancynumber class="text-nowrap" :number="e.total_share" :type="'percent'" :decimals="8"></fancynumber>
+                </div>
+              </div>
+
+              <div class="markets-list-sub">
+                <div v-for="x of e.exchanges" class="markets-list-sub-item flex-row flex-middle flex-stretch" :key="x.exchange_id">
+                  <div class="flex-1 text-nowrap">
+                    <span>&nbsp;⤷</span>
+                    <a :href="x.market_url" target="_blank">{{ x.exchange_name }}</a>
+                  </div>
+                  <div class="flex-1 push-left text-right">
+                    <span>&nbsp;</span>
+                  </div>
+                  <div class="flex-1 push-left text-right">
+                    <fancynumber class="text-nowrap" :number="x.volume_24h" :type="'money'"></fancynumber>
+                  </div>
+                  <div class="flex-1 push-left text-right">
+                    <fancynumber class="text-nowrap" :number="x.price" :decimals="3" :prefix="'$ '"></fancynumber>
+                  </div>
+                  <div class="flex-1 push-left text-right">
+                    <span>&nbsp;</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- pagination buttons -->
+          <div class="pagination">
+            <button v-for="page in marketsPages" class="push-right" :class="{ 'active': ( page === marketsPage ) }" :key="page" @click="setPage( 'marketsPage', page )">
+              <span>{{ page }}</span>
+            </button>
+          </div>
+
+        </section>
+
+        <!-- page section -->
+        <section class="card push-bottom">
+          <h1>{{ coin.name }} Live Trades</h1>
+          <hr />
+
+          <div class="text-loader">
+            Waiting for api data...
+          </div>
+
+        </section>
+
+      </div> <!-- wrapper -->
+    </div> <!-- app -->
+
+    <!-- external scripts -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/Swiper/4.0.7/js/swiper.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/vue-awesome-swiper@3.1.2/dist/vue-awesome-swiper.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/apexcharts/2.2.4/apexcharts.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/gsap/2.0.2/TweenMax.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/vue/2.5.21/vue.min.js"></script>
+
+    <!-- app scripts -->
+    <script src="public/js/coin.js"></script>
+    <script src="public/js/utils.js"></script>
+    <script src="public/js/fancynumber.js"></script>
+    <script src="public/js/details.js"></script>
+
+  </body>
+</html>
